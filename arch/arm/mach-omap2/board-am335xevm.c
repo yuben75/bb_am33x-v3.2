@@ -1947,6 +1947,29 @@ static void beaglebone_cape_setup(struct memory_accessor *mem_acc, void *context
 		beaglebone_tsadcpins_free = 0;
 	}
 
+	if (!strncmp("BB-BONE-LCD3-01", cape_config.partnumber, 15)) {
+		pr_info("BeagleBone cape: initializing LCD cape\n");
+		bbtoys7lcd_init(0,0);
+		pr_info("BeagleBone cape: initializing LCD cape touchscreen\n");
+		tsc_init(0,0);
+		beaglebone_tsadcpins_free = 0;
+	}
+
+	if (!strncmp("BB-BONE-VGA-01", cape_config.partnumber, 15)) {
+		pr_info("BeagleBone cape: initializing VGA cape\n");
+		dvi_init(0,0);
+	}
+
+	if (!strncmp("BB-BONE-BATT-01", cape_config.partnumber, 15)) {
+		pr_info("BeagleBone cape: initializing battery cape\n");
+		//foo_init(0,0);
+	}
+
+	if (!strncmp("BB-BONE-SERL", cape_config.partnumber, 12)) {
+		pr_info("BeagleBone cape: initializing serial cape\n");
+		//foo_init(0,0);
+	}
+
 	if (!strncmp("TT3201-001", cape_config.partnumber, 10)) {
 		pr_info("BeagleBone cape: initializing CAN cape\n");
 		tt3201_init(0,0);
