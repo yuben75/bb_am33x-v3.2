@@ -2323,21 +2323,21 @@ typedef union {
   Bit 15     Pin is used or not: 0=Unused by Cape 1=Used by Cape
   Bit 14-13  Pin Direction: 10=Output 01=Input 11=BDIR
   Bit 12-7   Reserved
-  Bit 6      Slew Rate: 0=Fast 1=Slow
-  Bit 5      Rx Enable: 0=Disabled 1=Enabled
-  Bit 4      Pull Up/Dn Select: 0=Pulldown 1=PullUp
-  Bit 3      Pull Up/DN enabled: 0=Enabled 1=Disabled
+  Bit 6	     Slew Rate: 0=Fast 1=Slow
+  Bit 5	     Rx Enable: 0=Disabled 1=Enabled
+  Bit 4	     Pull Up/Dn Select: 0=Pulldown 1=PullUp
+  Bit 3	     Pull Up/DN enabled: 0=Enabled 1=Disabled
   Bit 2-0    Mux Mode Selection: Mode 0-7
 */
 	struct {
-		uint16_t    mux             : 3;
-		uint16_t    pull_enable     : 1;
-		uint16_t    pull_up         : 1;
-		uint16_t    rx_enable       : 1;
-		uint16_t    slew_rate       : 1;
-		uint16_t    reserved        : 6;
-		uint16_t    direction       : 2;
-		uint16_t    used            : 1;
+		uint16_t    mux		    : 3;
+		uint16_t    pull_enable	    : 1;
+		uint16_t    pull_up	    : 1;
+		uint16_t    rx_enable	    : 1;
+		uint16_t    slew_rate	    : 1;
+		uint16_t    reserved	    : 6;
+		uint16_t    direction	    : 2;
+		uint16_t    used	    : 1;
 	};
 	uint16_t      value;
 } pin_def;
@@ -2361,9 +2361,7 @@ static int bone_io_get_mux_setting( pin_def setting)
 			pin_setting = AM33XX_PIN_INPUT;
 		}
 		if (!setting.rx_enable) {
-#if DEBUG_EEPROM_CONFIG
-			pr_warning( "  pin is set as input but the receiver is not enabled!\n");
-#endif
+			pr_debug( "  pin is set as input but the receiver is not enabled!\n");
 		}
 		break;
 	case 2:
@@ -2374,16 +2372,12 @@ static int bone_io_get_mux_setting( pin_def setting)
 	/* bi-dir */
 	default:
 	/* reserved */
-#if DEBUG_EEPROM_CONFIG
-		pr_warning( "  pin ignored because it uses an unsupported mode: 0x%04x\n",
-			    setting.direction);
-#endif
+		pr_debug( "  pin ignored because it uses an unsupported mode: 0x%04x\n",
+			setting.direction);
 		return -1;
 	}
-#if DEBUG_EEPROM_CONFIG
-	pr_info("  pin is configured as %s\n",
+	pr_debug("  pin is configured as %s\n",
 		(pin_setting & AM33XX_PIN_INPUT) ? "input" : "output");
-#endif
 	switch (setting.mux) {
 	case 0: pin_setting |= OMAP_MUX_MODE0; break;
 	case 1: pin_setting |= OMAP_MUX_MODE1; break;
@@ -2405,10 +2399,8 @@ static struct omap_mux* bone_io_pin_lookup( const char* pin_name)
 	for (;;) {
 		if (am33xx_mux_get_entry( index, &mux) < 0) {
 			/* no more entries */
-#if DEBUG_EEPROM_CONFIG
-			pr_warning( "   configuration error, pin '%s' not found in mux database\n",
-				    pin_name);
-#endif
+			pr_debug( "   configuration error, pin '%s' not found in mux database\n",
+				pin_name);
 			return NULL;
 		}
 		if (mux != NULL &&
@@ -2416,10 +2408,8 @@ static struct omap_mux* bone_io_pin_lookup( const char* pin_name)
 		    strcmp( mux->muxnames[ 0], pin_name) == 0)
 		{
 			/* entry found */
-#if DEBUG_EEPROM_CONFIG
-			pr_info( "   found pin '%s' at index %d in mux database'\n",
-				 pin_name, index);
-#endif
+			pr_debug( "   found pin '%s' at index %d in mux database'\n",
+				pin_name, index);
 			return mux;
 		}
 		++index;
@@ -2447,24 +2437,17 @@ static int bone_io_config_pin( const char* pin_name, pin_def eeprom_setting)
 	signal_name = mux->muxnames[ eeprom_setting.mux];
 
 	if (signal_name == NULL) {
-#if DEBUG_EEPROM_CONFIG
-		pr_warning( "    Configuration error, no signal found for pin '%s' in mode %d\n",
-			    pin_name, eeprom_setting.mux);
-#endif
+		pr_debug( "    Configuration error, no signal found for pin '%s' in mode %d\n",
+			pin_name, eeprom_setting.mux);
 		return -1;
 	}
-
-#if DEBUG_EEPROM_CONFIG
-	pr_info( "    setting pin '%s' to signal '%s'\n",
+	pr_debug( "    setting pin '%s' to signal '%s'\n",
 		 pin_name, signal_name);
-#endif
 	l1 = strlen( pin_name);
 	l2 = strlen( signal_name);
 
 	if (l1 + 1 + l2 + 1 > sizeof( full_name)) {
-#if DEBUG_EEPROM_CONFIG
-		pr_warning( "    Internal error, combined signal name too long\n");
-#endif
+		pr_debug( "    Internal error, combined signal name too long\n");
 		return -1;
 	} else {
 		memcpy( full_name, pin_name, l1);
@@ -2474,10 +2457,8 @@ static int bone_io_config_pin( const char* pin_name, pin_def eeprom_setting)
 		if (omap_mux_init_signal( full_name, pin_setting) < 0) {
 			return -1;
 		}
-#if DEBUG_EEPROM_CONFIG
-		pr_info( "     mux '%s' was set to mode 0x%04x\n",
+		pr_debug( "	mux '%s' was set to mode 0x%04x\n",
 			 full_name, pin_setting);
-#endif
 	}
 	// return 0 for input, 1 for output
 	return (pin_setting & AM33XX_PIN_INPUT) ? 0 : 1;
@@ -2516,8 +2497,8 @@ static void bone_io_config_from_cape_eeprom( void)
 
 		if (pin_setting.used) {
 			switch (bone_io_config_pin( pin_name, pin_setting)) {
-			case 0:  status[ i] = 'i'; break;
-			case 1:  status[ i] = 'o'; break;
+			case 0:	 status[ i] = 'i'; break;
+			case 1:	 status[ i] = 'o'; break;
 			default: status[ i] = '#'; break;
 			}
 		} else {
