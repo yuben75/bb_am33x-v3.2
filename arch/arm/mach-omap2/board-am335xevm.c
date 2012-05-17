@@ -543,6 +543,7 @@ unsigned int gigabit_enable = 1;
 static char am335x_mac_addr[EEPROM_NO_OF_MAC_ADDR][ETH_ALEN];
 
 #define AM335X_EEPROM_HEADER		0xEE3355AA
+#define BONEA2_EEPROM_HEADER		0x41EE3355
 
 /* current profile if exists else PROFILE_0 on error */
 static u32 am335x_get_profile_selection(void)
@@ -4059,12 +4060,13 @@ static struct evm_dev_cfg ip_phn_evm_dev_cfg[] = {
 
 /* Beaglebone < Rev A3 */
 static struct evm_dev_cfg beaglebone_old_dev_cfg[] = {
+	{tps65217_init,	DEV_ON_BASEBOARD, PROFILE_NONE},
 	{rmii1_init,	DEV_ON_BASEBOARD, PROFILE_NONE},
 	{usb0_init,	DEV_ON_BASEBOARD, PROFILE_NONE},
 	{usb1_init,	DEV_ON_BASEBOARD, PROFILE_NONE},
 	{i2c2_init,	DEV_ON_BASEBOARD, PROFILE_NONE},
 	{mmc0_init,	DEV_ON_BASEBOARD, PROFILE_NONE},
-	{boneleds_init,	DEV_ON_BASEBOARD, PROFILE_ALL},
+	{bonew1_gpio_init, DEV_ON_BASEBOARD, PROFILE_ALL},
 	{NULL, 0, 0},
 };
 
@@ -4156,6 +4158,11 @@ static void setup_beaglebone_old(void)
 
 	/* Fill up global evmid */
 	am33xx_evmid_fillup(BEAGLE_BONE_OLD);
+
+	/*TODO:We are registering all pwms for the beaglebone here
+	 *this may effect power management in the future
+	 */
+	register_all_pwms();
 }
 
 /* BeagleBone after Rev A3 */
@@ -4235,12 +4242,24 @@ static void am335x_evm_setup(struct memory_accessor *mem_acc, void *context)
 		goto out;
 	}
 
-	if (config.header != AM335X_EEPROM_HEADER) {
+	if ((config.header != AM335X_EEPROM_HEADER) && (config.header != BONEA2_EEPROM_HEADER)) {
 		pr_err("AM335X: wrong header 0x%x, expected 0x%x\n",
 			config.header, AM335X_EEPROM_HEADER);
 		goto out;
 	}
 
+	/*
+	 * The original factory EEPROM of the BeagleBone A2's is coming up
+	 * as 335BONE00A24211BB000080, for the config.name so lets prepend an A to it...
+	 */
+	if (!strncmp("335BONE00A2", config.name, 11)) {
+		char namefixed[33];
+		strcpy(namefixed, "A");
+		strcat(namefixed, config.name);
+		strncpy(config.name, namefixed, 32);
+	}
+
+	pr_info("Board config.name: %s\n", config.name);
 	if (strncmp("A335", config.name, 4)) {
 		pr_err("Board %s\ndoesn't look like an AM335x board\n",
 			config.name);
